@@ -6,4 +6,3 @@
 
 (test solve-with-liblbfgs
   (cl-lr.t.scenario.simple-calculation:solve-with-liblbfgs :test is))
-
