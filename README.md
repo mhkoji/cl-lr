@@ -1,7 +1,7 @@
 cl-lr
 ===========
 
-A library written in Common Lisp to estimate the paramters of a logistic regression model.
+A library written in Common Lisp to estimate the parameters of a logistic regression model.
 
 
 ## Prerequisite
