@@ -1,0 +1,61 @@
+(defpackage :cl-lr.solver.fn.gradient-descent
+  (:use :cl)
+  (:export :solve))
+(in-package :cl-lr.solver.fn.gradient-descent)
+
+(defun next-guess (searcher df xs)
+  (let ((ds (mapcar #'- (funcall df xs))))
+    (let ((a (funcall searcher xs ds)))
+      (mapcar (lambda (x d)
+                (coerce (+ x (* a d)) 'double-float))
+              xs ds))))
+
+(defun create-backtrack-line-searcher (f df)
+  (let ((c 1/2))
+    (lambda (xs ds)
+      (labels ((phi (a)
+                 (funcall f (mapcar (lambda (x d) (+ x (* a d))) xs ds)))
+               (phi-prime (a)
+                 (reduce #'+ (mapcar #'*
+                                     (funcall df
+                                              (mapcar (lambda (x d)
+                                                        (+ x (* a d)))
+                                                      xs ds))
+                                     ds)))
+               (is-ok (a)
+                 (<= (phi a) (+ (phi 0) (* c a (phi-prime 0))))))
+        (let ((rho (coerce 1/2 'double-float)))
+          (loop for a = 1 then (* a rho) when (is-ok a) return a))))))
+
+(defun minimize (f df xs0)
+  (let ((max-iteration-count 20000)
+        (searcher (create-backtrack-line-searcher f df)))
+    (loop for i from 1
+          for xs      = xs0 then xs-next
+          for xs-next = (next-guess searcher df xs)
+      when (or (= i max-iteration-count)
+               (< (reduce #'+ (mapcar (lambda (x x-next)
+                                        (* (- x x-next) (- x x-next)))
+                                      xs xs-next))
+                  1.0d-14))
+       return xs)))
+
+(defun solve (dimension gradient-fn)
+  (labels ((compute-grads (xs)
+             (funcall gradient-fn (coerce xs 'vector))))
+    (let ((call-count 0))
+      (let ((ws
+             (minimize
+              (lambda (xs)
+                (multiple-value-bind (gradients f) (compute-grads xs)
+                  (declare (ignore gradients))
+                  (when (= (mod call-count 100) 0)
+                    (print f))
+                  (incf call-count)
+                  f))
+              (lambda (xs)
+                (multiple-value-bind (gradients f) (compute-grads xs)
+                  (declare (ignore f))
+                  (coerce gradients 'list)))
+              (make-list dimension :initial-element 0.0d0))))
+        (coerce ws 'vector)))))
